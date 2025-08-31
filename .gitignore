@@ -1,0 +1,188 @@
+# Python 相关
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# 虚拟环境
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE 配置 (部分)
+.vscode/settings_local.json
+.idea/
+*.swp
+*.swo
+*~
+
+# 项目特定文件
+config.json
+*.log
+logs/
+screenshot_*.png
+screenshot_*.jpg
+screenshot_*.jpeg
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# 测试覆盖率
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder
+.spyderproject
+.spyproject
+
+# Rope
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Windows 特定
+*.exe
+*.msi
+*.lnk
+desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msix
+*.msm
+*.msp
+
+# macOS 特定
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux 特定
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# 安全相关 - API 密钥和敏感配置
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.json
+api_keys.json
+.env.local
+.env.production
+
+# 备份文件
+*.bak
+*.backup
+*.old
+*.orig
+
+# 音频文件 (如果有临时录音文件)
+*.wav
+*.mp3
+*.m4a
+*.ogg
+*.flac
+
+# 视频文件 (如果有录屏文件)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 压缩文件
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.tar.bz2

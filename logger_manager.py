@@ -52,6 +52,15 @@ class LoggerManager:
     
     def setup_logging(self):
         """设置日志系统"""
+        # 确保控制台支持UTF-8编码
+        import io
+        if hasattr(sys.stdout, 'reconfigure'):
+            try:
+                sys.stdout.reconfigure(encoding='utf-8')
+                sys.stderr.reconfigure(encoding='utf-8')
+            except:
+                pass
+        
         logging_config = config.get_logging_settings()
         
         # 设置根日志级别
@@ -65,7 +74,7 @@ class LoggerManager:
         for handler in root_logger.handlers[:]:
             root_logger.removeHandler(handler)
         
-        # 控制台处理器
+        # 控制台处理器，确保UTF-8编码
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(log_level)
         

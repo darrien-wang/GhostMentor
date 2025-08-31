@@ -1,0 +1,197 @@
+# GhostMentor - AI助手项目 Cursor 配置
+
+## 项目概述
+这是一个名为 GhostMentor 的 Python 项目，是一个基于 OpenAI GPT-4o 的 AI 助手，具有以下特点：
+- 实时屏幕分析和语音识别
+- 透明 HUD 界面 (使用 Pygame)
+- 模块化架构设计
+- Windows 系统集成 (Win32 API)
+- 隐蔽模式运行
+
+## 开发环境
+- **操作系统**: Windows 10/11
+- **Python 版本**: 3.8+
+- **Shell**: PowerShell
+- **主要依赖**: OpenAI, Pygame, OpenCV, Pillow, PyAudio, Faster-Whisper
+
+## 项目结构
+```
+GhostMentor/
+├── ghostmentor.py          # 主程序文件
+├── config_manager.py       # 配置管理器
+├── logger_manager.py       # 日志管理器
+├── api_manager.py          # API管理器
+├── audio_manager.py        # 音频管理器
+├── config.json             # 配置文件
+├── config.example.json     # 配置示例
+├── requirements.txt        # 依赖列表
+└── README.md              # 项目文档
+```
+
+## 代码规范
+
+### Python 风格
+- 使用 PEP 8 代码风格
+- 函数和变量使用 snake_case
+- 类名使用 PascalCase
+- 常量使用 UPPER_CASE
+- 适当的类型注释 (Type Hints)
+
+### 注释规范
+- 使用中文注释说明复杂逻辑
+- 函数使用 docstring 文档化
+- 重要的业务逻辑添加详细注释
+- 使用 emoji 增强可读性 (🎮 🤖 📸 等)
+
+### 错误处理
+- 使用 try-except 包装可能失败的操作
+- 记录错误日志到 logger
+- 提供有意义的错误信息
+- 优雅降级处理
+
+## 文件编码
+- 所有文件使用 UTF-8 编码
+- 支持中文字符显示和处理
+- 设置 console 编码为 UTF-8
+
+## 开发约定
+
+### 模块导入
+```python
+# 标准库
+import os
+import asyncio
+import time
+
+# 第三方库
+import numpy as np
+import pygame
+from PIL import Image
+
+# 项目模块
+from config_manager import config
+from logger_manager import get_logger
+```
+
+### 日志记录
+```python
+logger = get_logger(__name__)
+logger.info("✅ 操作成功")
+logger.warning("⚠️ 警告信息")
+logger.error("❌ 错误信息")
+```
+
+### 配置管理
+- 使用 config_manager 统一管理配置
+- 配置文件使用 JSON 格式
+- 敏感信息 (如 API 密钥) 不提交到版本控制
+
+## Windows 特定注意事项
+
+### 控制台配置
+- 设置 `chcp 65001` 支持 UTF-8
+- 隐藏控制台窗口 (`SW_HIDE`)
+- 使用 ctypes 调用 Win32 API
+
+### 窗口管理
+- 使用 pygame 创建透明窗口
+- Win32 API 设置窗口属性
+- 支持窗口拖拽和键盘控制
+
+### 键盘绑定
+- 使用 keyboard 库设置全局热键
+- 高优先级键盘 hook
+- 覆盖系统快捷键
+
+## 调试和测试
+
+### 运行模式
+```bash
+# 完整模式 (带语音)
+python ghostmentor.py -f
+
+# 静音模式 (无语音)
+python ghostmentor.py -s
+
+# 指定配置文件
+python ghostmentor.py --config custom_config.json
+```
+
+### 日志级别
+- DEBUG: 详细调试信息
+- INFO: 一般操作信息
+- WARNING: 警告信息
+- ERROR: 错误信息
+
+## 性能优化
+
+### 内存管理
+- 及时清理截图文件
+- 异步处理 OpenAI API 调用
+- 控制音频缓冲区大小
+
+### 界面渲染
+- 60 FPS 平滑动画
+- 文本换行和滚动优化
+- 透明度动画效果
+
+## 安全注意事项
+- API 密钥安全存储
+- 截图文件自动清理
+- 进程隐藏和反检测
+- 窗口排除录屏捕获
+
+## 常用命令
+
+### 安装依赖
+```bash
+pip install -r requirements.txt
+```
+
+### 代码格式化
+```bash
+black *.py
+isort *.py
+```
+
+### 类型检查
+```bash
+mypy *.py
+```
+
+## Cursor 特定配置
+
+### 自动补全
+- 启用 Python 智能补全
+- 支持类型提示和文档字符串
+- 导入路径自动补全
+
+### 代码导航
+- 快速跳转到定义
+- 查找所有引用
+- 符号搜索和重构
+
+### 调试支持
+- Python 调试器集成
+- 断点和变量查看
+- 异常处理和堆栈跟踪
+
+## 开发工作流
+
+1. 功能开发在各自的管理器模块中
+2. 主程序 (ghostmentor.py) 协调各模块
+3. 配置变更通过 config_manager 处理
+4. 所有操作都要有适当的日志记录
+5. 错误处理要优雅且用户友好
+
+## 注意事项
+- 项目运行需要管理员权限 (全局热键)
+- 需要麦克风权限 (语音识别)
+- 需要屏幕捕获权限
+- 某些安全软件可能误报
+
+## 中文支持
+- 界面显示完全支持中文
+- 字体自动选择中文字体
+- 日志和提示使用中文
+- 配置文件注释使用中文

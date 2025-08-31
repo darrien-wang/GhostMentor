@@ -77,6 +77,8 @@ notification_timer = 0  # Notification display timer
 app_state = "ready"  # App states: ready, processing, listening, error
 state_animation = 0  # State indicator animation
 running = True  # Main loop control
+screenshot_files = []  # Track created screenshot files for cleanup
+window_hidden = False  # Track window visibility state
 
 def show_notification(message, duration=3.0):
     """Show a user-friendly notification with Apple-style animation."""
@@ -128,13 +130,15 @@ def capture_screen():
 
 def save_screenshot():
     """Save a screenshot to the local directory."""
+    global screenshot_files
     try:
         screenshot = capture_screen()
         if screenshot:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"screenshot_{timestamp}.png"
             screenshot.save(filename)
-            logger.info(f"Screenshot saved as {filename}")
+            screenshot_files.append(filename)  # Track for cleanup
+            logger.info(f"📸 截图已保存: {filename}")
             return filename
         else:
             logger.warning("Failed to capture screenshot")
@@ -142,6 +146,50 @@ def save_screenshot():
     except Exception as e:
         logger.error(f"Error saving screenshot: {e}")
         return None
+
+def cleanup_screenshots():
+    """清理所有创建的截图文件"""
+    global screenshot_files
+    try:
+        deleted_count = 0
+        for filename in screenshot_files:
+            try:
+                if os.path.exists(filename):
+                    os.remove(filename)
+                    deleted_count += 1
+                    logger.debug(f"🗑️ 已删除截图: {filename}")
+            except Exception as e:
+                logger.warning(f"无法删除截图文件 {filename}: {e}")
+        
+        if deleted_count > 0:
+            logger.info(f"🧹 已清理 {deleted_count} 个截图文件")
+        screenshot_files.clear()
+    except Exception as e:
+        logger.error(f"清理截图文件时出错: {e}")
+
+def toggle_window_visibility():
+    """切换窗口显示/隐藏状态"""
+    global window_hidden, hwnd
+    try:
+        if hwnd:
+            if window_hidden:
+                # 显示窗口
+                win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
+                win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 
+                                    window_x, window_y, 0, 0, 
+                                    win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
+                set_window_opacity(window_opacity)
+                window_hidden = False
+                logger.info("👁️ 窗口已显示")
+                show_notification("👁️ 窗口已显示", 1.5)
+            else:
+                # 隐藏窗口
+                win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
+                window_hidden = True
+                logger.info("🙈 窗口已隐藏")
+                # 注意：隐藏时无法显示通知，因为窗口不可见
+    except Exception as e:
+        logger.error(f"切换窗口可见性时出错: {e}")
 
 async def send_to_openai(image, text):
     """Send screen image and transcribed text to OpenAI API using API manager."""
@@ -276,10 +324,27 @@ def create_hud():
             title_font_size = ui_settings['title_font_size'] 
             subtitle_font_size = ui_settings['subtitle_font_size']
             
-            # Try to use system fonts similar to San Francisco
-            font = pygame.font.SysFont('segoe ui', font_size)
-            title_font = pygame.font.SysFont('segoe ui', title_font_size, bold=True)
-            subtitle_font = pygame.font.SysFont('segoe ui', subtitle_font_size)
+            # Try to use system fonts that support Chinese characters
+            # List of fonts that support Chinese, in order of preference
+            chinese_fonts = ['microsoft yahei', 'simsun', 'simhei', 'dengxian', 'segoe ui', 'arial unicode ms']
+            font_found = False
+            
+            for font_name in chinese_fonts:
+                try:
+                    font = pygame.font.SysFont(font_name, font_size)
+                    title_font = pygame.font.SysFont(font_name, title_font_size, bold=True)
+                    subtitle_font = pygame.font.SysFont(font_name, subtitle_font_size)
+                    font_found = True
+                    logger.info(f"🎨 Using font: {font_name}")
+                    break
+                except:
+                    continue
+            
+            if not font_found:
+                # Fallback to default fonts
+                font = pygame.font.SysFont('segoe ui', font_size)
+                title_font = pygame.font.SysFont('segoe ui', title_font_size, bold=True)
+                subtitle_font = pygame.font.SysFont('segoe ui', subtitle_font_size)
             logger.info(f"🎨 Fonts initialized: body={font_size}px, title={title_font_size}px, subtitle={subtitle_font_size}px")
         except Exception as font_error:
             # Fallback to standard fonts
@@ -293,7 +358,7 @@ def create_hud():
         
         # Initialize with ready state
         set_app_state("ready")
-        show_notification("🍎 GhostMentor Ultra Ready", 2.0)
+        show_notification("🍎 GhostMentor Ultra 准备就绪", 2.0)
         
         logger.info(f"🍎 Apple-inspired HUD created at ({window_x}, {window_y}) - {window_width}x{window_height}px")
     except Exception as e:
@@ -367,23 +432,24 @@ def draw_help_menu():
     
     # Title
     title_color = (255, 255, 255, help_menu_alpha)
-    title_text = title_font.render("🎮 Keyboard Shortcuts", True, (255, 255, 255))
+    title_text = title_font.render("🎮 键盘快捷键", True, (255, 255, 255))
     title_rect = title_text.get_rect(center=(menu_width // 2, 30))
     help_surface.blit(title_text, title_rect)
     
     # Shortcuts data
     shortcuts = [
-        ("Take Screenshot", "Ctrl", "H"),
-        ("AI Analysis", "Ctrl", "Enter"),
-        ("Clear History", "Ctrl", "G"),
-        ("Move Window Up", "Ctrl", "↑"),
-        ("Move Window Down", "Ctrl", "↓"),
-        ("Move Window Left", "Ctrl", "←"),
-        ("Move Window Right", "Ctrl", "→"),
-        ("Increase Opacity", "Ctrl", "PgUp/="),
-        ("Decrease Opacity", "Ctrl", "PgDn/-"),
-        ("Show/Hide Help", "Ctrl", "?"),
-        ("Exit GhostMentor", "Alt", "F4")
+        ("截取屏幕", "Ctrl", "H"),
+        ("AI分析", "Ctrl", "Enter"),
+        ("清除历史", "Ctrl", "G"),
+        ("切换显示/隐藏", "Ctrl", "B"),
+        ("上移窗口", "Ctrl", "↑"),
+        ("下移窗口", "Ctrl", "↓"),
+        ("左移窗口", "Ctrl", "←"),
+        ("右移窗口", "Ctrl", "→"),
+        ("增加透明度", "Ctrl", "PgUp/="),
+        ("减少透明度", "Ctrl", "PgDn/-"),
+        ("显示/隐藏帮助", "Ctrl", "?"),
+        ("退出程序", "Alt", "F4")
     ]
     
     # Draw shortcuts
@@ -508,6 +574,10 @@ def setup_keybindings():
                     new_opacity = max(13, window_opacity - 25)  # Decrease by ~10%, min 5%
                     set_window_opacity(new_opacity)
                     return False
+                elif event.name == 'b':  # Ctrl + B to toggle window visibility
+                    logger.info("🥷 HIGH PRIORITY: Ctrl + B pressed (Toggle Window Visibility)")
+                    toggle_window_visibility()
+                    return False
             
             elif keyboard.is_pressed('alt') and event.name == 'f4':
                 logger.info("🥷 HIGH PRIORITY: Alt + F4 pressed (Exit GhostMentor)")
@@ -593,9 +663,14 @@ def setup_keybindings():
                 new_opacity = max(13, window_opacity - 25)
                 set_window_opacity(new_opacity)
 
+            def on_ctrl_b():
+                logger.info("👁️ Fallback: Ctrl + B pressed (Toggle Window Visibility)")
+                toggle_window_visibility()
+
             keyboard.add_hotkey('ctrl+h', on_ctrl_h)
             keyboard.add_hotkey('ctrl+enter', on_ctrl_enter)
             keyboard.add_hotkey('ctrl+g', on_ctrl_g)
+            keyboard.add_hotkey('ctrl+b', on_ctrl_b)
             keyboard.add_hotkey('alt+f4', on_alt_f4)
             keyboard.add_hotkey('ctrl+up', on_ctrl_up)
             keyboard.add_hotkey('ctrl+down', on_ctrl_down)
@@ -636,7 +711,11 @@ def main():
     global loop, running, scroll_offset, use_speech
     
     try:
-        logger.info("🚀 Starting GhostMentor Ultra Stealth Edition...")
+        # 设置控制台编码为UTF-8
+        if os.name == 'nt':  # Windows
+            os.system('chcp 65001 > nul')
+        
+        logger.info("🚀 正在启动 GhostMentor Ultra Stealth Edition...")
         
         # Initialize audio manager if speech is enabled
         audio_mgr = None
@@ -645,13 +724,13 @@ def main():
                 audio_mgr = initialize_audio_manager(use_speech=True)
                 audio_mgr.set_transcript_callback(on_transcript_updated)
                 audio_mgr.start_recording()
-                logger.info("🎤 Audio manager initialized and recording started")
+                logger.info("🎤 音频管理器已初始化，录音已开始")
             except Exception as e:
-                logger.error(f"Failed to initialize audio: {e}")
-                logger.warning("🔇 Continuing without speech recognition")
+                logger.error(f"音频初始化失败: {e}")
+                logger.warning("🔇 继续运行，但不使用语音识别")
                 use_speech = False
         else:
-            logger.info("🔇 Running in silent mode - speech recognition disabled")
+            logger.info("🔇 运行在静音模式 - 语音识别已禁用")
 
         # Create HUD window
         create_hud()
@@ -660,7 +739,7 @@ def main():
         loop = asyncio.new_event_loop()
         asyncio_thread = Thread(target=run_asyncio_loop, args=(loop,), daemon=True)
         asyncio_thread.start()
-        logger.info("🔄 Async loop started for OpenAI API calls")
+        logger.info("🔄 OpenAI API异步循环已启动")
 
         # Set up universal key bindings
         setup_keybindings()
@@ -671,7 +750,7 @@ def main():
         clock = pygame.time.Clock()
         running = True
         
-        logger.info("🎮 Entering main game loop...")
+        logger.info("🎮 进入主游戏循环...")
         
         while running:
             try:
@@ -679,7 +758,7 @@ def main():
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         running = False
-                        logger.info("❌ Window close event detected")
+                        logger.info("❌ 检测到窗口关闭事件")
                     elif event.type == pygame.MOUSEBUTTONDOWN:
                         if event.button == 1:
                             mouse_x, mouse_y = event.pos
@@ -726,8 +805,22 @@ def main():
                 visible_lines = wrapped_lines[scroll_offset:scroll_offset + max_lines]
                 
                 for i, line in enumerate(visible_lines):
-                    text_surface = font.render(line, True, (255, 255, 255))
-                    screen.blit(text_surface, (10, 10 + i * 22))
+                    try:
+                        # 确保文本渲染支持中文字符
+                        text_surface = font.render(line, True, (255, 255, 255))
+                        screen.blit(text_surface, (10, 10 + i * 22))
+                    except Exception as e:
+                        # 如果渲染失败，尝试使用ASCII兼容的方式
+                        logger.debug(f"文本渲染错误: {e}")
+                        try:
+                            # 尝试编码转换
+                            safe_line = line.encode('utf-8', errors='replace').decode('utf-8')
+                            text_surface = font.render(safe_line, True, (255, 255, 255))
+                            screen.blit(text_surface, (10, 10 + i * 22))
+                        except:
+                            # 最后的备用方案
+                            text_surface = font.render("文本显示错误", True, (255, 100, 100))
+                            screen.blit(text_surface, (10, 10 + i * 22))
 
                 # Draw help menu overlay if enabled
                 draw_help_menu()
@@ -749,7 +842,10 @@ def main():
         raise
     finally:
         # Cleanup resources
-        logger.info("🧹 Cleaning up resources...")
+        logger.info("🧹 正在清理资源...")
+        
+        # Clean up screenshots first
+        cleanup_screenshots()
         
         # Clean up audio
         if audio_mgr:
@@ -758,23 +854,23 @@ def main():
         # Clean up pygame
         if 'pygame' in globals():
             pygame.quit()
-            logger.info("🎮 Pygame resources cleaned up")
+            logger.info("🎮 Pygame资源已清理")
         
         # Clean up keyboard hooks
         try:
             keyboard.unhook_all()
-            logger.info("⌨️ Keyboard bindings removed")
+            logger.info("⌨️ 键盘绑定已移除")
         except:
             pass
         
         # Save final config state
         try:
             config.save_config()
-            logger.info("💾 Configuration saved")
+            logger.info("💾 配置已保存")
         except Exception as e:
-            logger.error(f"Failed to save config: {e}")
+            logger.error(f"保存配置失败: {e}")
         
-        logger.info("✅ GhostMentor shutdown complete")
+        logger.info("✅ GhostMentor 已完全关闭")
 
 if __name__ == "__main__":
     try:
