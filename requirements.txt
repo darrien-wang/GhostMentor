@@ -2,6 +2,7 @@ numpy
 opencv-python
 pillow
 openai
+pygments>=2.14.0
 customtkinter>=5.2.0
 pywin32
 keyboard

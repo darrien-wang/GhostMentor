@@ -14,6 +14,10 @@ import keyboard
 from datetime import datetime
 import textwrap
 import argparse
+import re
+import tkinter as tk
+from tkinter import scrolledtext
+import tkinter.font as tkFont
 
 # Import our custom managers
 try:
@@ -79,6 +83,29 @@ state_animation = 0  # State indicator animation
 running = True  # Main loop control
 screenshot_files = []  # Track created screenshot files for cleanup
 window_hidden = False  # Track window visibility state
+# Pygame代码窗口相关变量
+code_window_visible = False  # 代码窗口可见性
+code_window_screen = None   # Pygame代码窗口surface
+code_window_hwnd = None     # 代码窗口句柄
+code_scroll_offset = 0      # 代码窗口滚动偏移
+code_font = None           # 代码字体
+line_number_font = None    # 行号字体
+current_highlighted_code = []  # 当前高亮代码数据
+current_code = ""  # Current code to display
+
+# Monokai主题颜色配置
+SYNTAX_COLORS = {
+    'keyword': (249, 38, 114),      # 关键字 - 品红  
+    'string': (230, 219, 116),      # 字符串 - 黄色
+    'comment': (117, 113, 94),      # 注释 - 灰色
+    'number': (174, 129, 255),      # 数字 - 紫色
+    'function': (166, 226, 46),     # 函数名 - 绿色
+    'builtin': (102, 217, 239),     # 内置函数 - 青色
+    'operator': (248, 248, 242),    # 操作符
+    'background': (25, 30, 36),     # 背景色
+    'text': (248, 248, 242),        # 默认文本
+    'line_number': (117, 113, 94),  # 行号颜色
+}
 
 def show_notification(message, duration=3.0):
     """Show a user-friendly notification with Apple-style animation."""
@@ -191,6 +218,315 @@ def toggle_window_visibility():
     except Exception as e:
         logger.error(f"切换窗口可见性时出错: {e}")
 
+def extract_code_from_response(response_text):
+    """从AI响应中提取代码块"""
+    try:
+        # 匹配 ```python 到 ``` 之间的代码
+        code_pattern = r'```(?:python)?\s*\n(.*?)\n```'
+        matches = re.findall(code_pattern, response_text, re.DOTALL)
+        
+        if matches:
+            # 合并所有代码块
+            all_code = '\n\n# ========== 下一个代码块 ==========\n\n'.join(matches)
+            return all_code.strip()
+        return ""
+    except Exception as e:
+        logger.error(f"提取代码时出错: {e}")
+        return ""
+
+def parse_code_syntax_pygame(code_text):
+    """Pygame版本的语法解析"""
+    if not code_text.strip():
+        return []
+    
+    lines = code_text.split('\n')
+    highlighted_lines = []
+    
+    # Python关键字和内置函数
+    keywords = {
+        'def', 'class', 'if', 'else', 'elif', 'while', 'for', 'in', 'return',
+        'import', 'from', 'as', 'try', 'except', 'finally', 'with', 'pass',
+        'break', 'continue', 'and', 'or', 'not', 'is', 'lambda', 'yield',
+        'global', 'nonlocal', 'assert', 'del', 'raise', 'async', 'await'
+    }
+    
+    constants = {'None', 'True', 'False'}
+    builtins = {
+        'print', 'len', 'range', 'str', 'int', 'float', 'list', 'dict', 'set',
+        'tuple', 'bool', 'enumerate', 'zip', 'map', 'filter', 'sum', 'max', 'min'
+    }
+    
+    for line_num, line in enumerate(lines, 1):
+        tokens = []
+        
+        # 处理注释
+        comment_match = re.search(r'#.*$', line)
+        if comment_match:
+            pre_comment = line[:comment_match.start()]
+            comment_text = line[comment_match.start():]
+            
+            # 处理注释前的内容
+            if pre_comment.strip():
+                tokens.extend(parse_line_tokens_pygame(pre_comment, keywords, constants, builtins))
+            
+            # 添加注释
+            tokens.append(('comment', comment_text))
+        else:
+            tokens.extend(parse_line_tokens_pygame(line, keywords, constants, builtins))
+        
+        highlighted_lines.append({
+            'line_number': line_num,
+            'tokens': tokens
+        })
+    
+    return highlighted_lines
+
+def parse_line_tokens_pygame(line, keywords, constants, builtins):
+    """解析单行的tokens"""
+    tokens = []
+    
+    # 简化版token解析
+    i = 0
+    while i < len(line):
+        char = line[i]
+        
+        if char.isspace():
+            # 空白字符
+            tokens.append(('text', char))
+            i += 1
+        elif char in '"\'':
+            # 字符串处理
+            quote = char
+            string_start = i
+            i += 1
+            while i < len(line) and line[i] != quote:
+                if line[i] == '\\' and i + 1 < len(line):
+                    i += 2  # 跳过转义字符
+                else:
+                    i += 1
+            if i < len(line):
+                i += 1  # 包含结束引号
+            tokens.append(('string', line[string_start:i]))
+        elif char.isdigit():
+            # 数字处理
+            num_start = i
+            while i < len(line) and (line[i].isdigit() or line[i] == '.'):
+                i += 1
+            tokens.append(('number', line[num_start:i]))
+        elif char.isalpha() or char == '_':
+            # 标识符处理
+            word_start = i
+            while i < len(line) and (line[i].isalnum() or line[i] == '_'):
+                i += 1
+            word = line[word_start:i]
+            
+            if word in keywords:
+                tokens.append(('keyword', word))
+            elif word in constants:
+                tokens.append(('keyword', word))  # 常量用关键字颜色
+            elif word in builtins:
+                tokens.append(('builtin', word))
+            else:
+                tokens.append(('text', word))
+        else:
+            # 操作符和其他字符
+            tokens.append(('operator', char))
+            i += 1
+    
+    return tokens
+
+
+
+def create_code_window():
+    """创建代码查看模式（集成到主窗口）"""
+    global code_window_visible, code_font, line_number_font
+    
+    try:
+        if code_window_visible:
+            return
+        
+        if not current_code.strip():
+            show_notification("📝 暂无代码可显示", 2.0)
+            return
+        
+        # 初始化代码字体
+        try:
+            code_font = pygame.font.SysFont('consolas', 12)
+            line_number_font = pygame.font.SysFont('consolas', 11)
+        except:
+            # 备用字体
+            code_font = pygame.font.SysFont('courier new', 12)
+            line_number_font = pygame.font.SysFont('courier new', 11)
+        
+        code_window_visible = True
+        logger.info("🎨 代码查看模式已激活")
+        show_notification("🎨 代码查看模式 (按Esc退出)", 2.0)
+        
+    except Exception as e:
+        logger.error(f"激活代码查看模式失败: {e}")
+        code_window_visible = False
+
+def render_pygame_code_window():
+    """在主窗口上渲染代码内容"""
+    global screen, current_highlighted_code, code_scroll_offset, current_code
+    
+    if not code_window_visible or not screen:
+        return
+    
+    try:
+        # 解析当前代码的语法高亮
+        if current_code:
+            current_highlighted_code = parse_code_syntax_pygame(current_code)
+        
+        # 清空屏幕并设置代码查看背景
+        screen.fill(SYNTAX_COLORS['background'])
+        
+        # 渲染参数
+        line_height = 16
+        line_number_width = 40
+        text_start_x = line_number_width + 8
+        margin_top = 10
+        margin_left = 5
+        visible_lines = (screen.get_height() - margin_top * 2) // line_height
+        
+        # 标题
+        title_text = f"🎨 代码查看器 - {len(current_highlighted_code)} 行 (Esc退出, ↑↓滚动)"
+        title_surface = font.render(title_text, True, (255, 255, 255))
+        screen.blit(title_surface, (margin_left, 5))
+        
+        # 渲染可见的代码行
+        if current_highlighted_code:
+            end_line = min(len(current_highlighted_code), code_scroll_offset + visible_lines - 2)  # -2 for title space
+            
+            for i, line_idx in enumerate(range(code_scroll_offset, end_line)):
+                line_data = current_highlighted_code[line_idx]
+                y_pos = margin_top + 25 + i * line_height  # +25 for title space
+                
+                # 渲染行号
+                line_num_text = line_number_font.render(
+                    f"{line_data['line_number']:3d}", 
+                    True, 
+                    SYNTAX_COLORS['line_number']
+                )
+                screen.blit(line_num_text, (margin_left, y_pos))
+                
+                # 渲染代码tokens
+                x_pos = text_start_x
+                for token_type, token_text in line_data['tokens']:
+                    if not token_text:  # 跳过空token
+                        continue
+                        
+                    # 确保不超出屏幕右边界
+                    if x_pos > screen.get_width() - 20:
+                        break
+                        
+                    color = SYNTAX_COLORS.get(token_type, SYNTAX_COLORS['text'])
+                    try:
+                        token_surface = code_font.render(token_text, True, color)
+                        screen.blit(token_surface, (x_pos, y_pos))
+                        x_pos += token_surface.get_width()
+                    except:
+                        # 如果渲染失败，使用默认颜色
+                        try:
+                            token_surface = code_font.render(token_text, True, SYNTAX_COLORS['text'])
+                            screen.blit(token_surface, (x_pos, y_pos))
+                            x_pos += token_surface.get_width()
+                        except:
+                            # 最后的备用方案
+                            pass
+            
+            # 渲染滚动指示器
+            if len(current_highlighted_code) > visible_lines - 2:
+                render_code_scrollbar(visible_lines - 2)
+                
+            # 底部状态栏
+            status_text = f"第 {code_scroll_offset + 1}-{min(code_scroll_offset + visible_lines - 2, len(current_highlighted_code))} 行 / 共 {len(current_highlighted_code)} 行"
+            status_surface = line_number_font.render(status_text, True, (180, 180, 180))
+            screen.blit(status_surface, (margin_left, screen.get_height() - 20))
+        
+    except Exception as e:
+        logger.error(f"渲染代码内容失败: {e}")
+
+def render_code_scrollbar(visible_lines):
+    """渲染代码窗口滚动条"""
+    global screen, current_highlighted_code, code_scroll_offset
+    
+    total_lines = len(current_highlighted_code)
+    if total_lines <= visible_lines:
+        return
+    
+    # 滚动条参数
+    scrollbar_width = 6
+    scrollbar_x = screen.get_width() - scrollbar_width - 5
+    scrollbar_height = screen.get_height() - 60  # 留出标题和状态栏空间
+    scrollbar_y = 35
+    
+    # 滚动条背景
+    pygame.draw.rect(screen, (50, 50, 50), 
+                    (scrollbar_x, scrollbar_y, scrollbar_width, scrollbar_height))
+    
+    # 滚动条thumb
+    thumb_height = max(15, (visible_lines / total_lines) * scrollbar_height)
+    if total_lines > visible_lines:
+        thumb_y = scrollbar_y + (code_scroll_offset / (total_lines - visible_lines)) * (scrollbar_height - thumb_height)
+    else:
+        thumb_y = scrollbar_y
+    
+    pygame.draw.rect(screen, (120, 120, 120), 
+                    (scrollbar_x, thumb_y, scrollbar_width, thumb_height))
+
+def close_code_window():
+    """关闭代码查看模式"""
+    global code_window_visible, code_scroll_offset
+    
+    try:
+        if code_window_visible:
+            code_window_visible = False
+            code_scroll_offset = 0  # 重置滚动位置
+            logger.info("🎨 代码查看模式已关闭")
+            show_notification("🎨 代码查看模式已关闭", 1.5)
+    except Exception as e:
+        logger.error(f"关闭代码查看模式失败: {e}")
+
+def toggle_code_window():
+    """切换代码窗口显示/隐藏"""
+    global current_code
+    
+    if not current_code.strip():
+        show_notification("📝 暂无代码可显示", 2.0)
+        return
+    
+    if code_window_visible:
+        close_code_window()
+    else:
+        create_code_window()
+
+def update_code_window():
+    """更新代码查看模式"""
+    if code_window_visible:
+        try:
+            # 代码查看模式不需要特殊更新，会在主渲染循环中处理
+            pass
+        except Exception as e:
+            logger.error(f"更新代码查看模式失败: {e}")
+
+def handle_pygame_code_window_events(event):
+    """处理Pygame代码窗口事件"""
+    global code_scroll_offset, current_highlighted_code
+    
+    if not code_window_visible:
+        return
+    
+    if event.type == pygame.MOUSEWHEEL:
+        if current_highlighted_code:
+            visible_lines = (code_window_screen.get_height() - 20) // 18
+            max_scroll = max(0, len(current_highlighted_code) - visible_lines)
+            
+            code_scroll_offset -= event.y * 3  # 滚动方向
+            code_scroll_offset = max(0, min(code_scroll_offset, max_scroll))
+            
+            render_pygame_code_window()
+
 async def send_to_openai(image, text):
     """Send screen image and transcribed text to OpenAI API using API manager."""
     try:
@@ -205,6 +541,14 @@ async def send_to_openai(image, text):
         response = await api_manager.analyze_screen(image, text)
         
         if response:
+            # 提取代码块
+            global current_code
+            extracted_code = extract_code_from_response(response)
+            if extracted_code:
+                current_code = extracted_code
+                logger.info(f"🎨 已提取代码，共 {len(extracted_code.split(chr(10)))} 行")
+                show_notification("🎨 检测到代码，按 Ctrl+C 查看", 3.0)
+            
             # Get formatted history for display
             history_text = api_manager.get_conversation_history()
             text_queue.put(history_text)
@@ -442,6 +786,7 @@ def draw_help_menu():
         ("AI分析", "Ctrl", "Enter"),
         ("清除历史", "Ctrl", "G"),
         ("切换显示/隐藏", "Ctrl", "B"),
+        ("代码窗口", "Ctrl", "C"),
         ("上移窗口", "Ctrl", "↑"),
         ("下移窗口", "Ctrl", "↓"),
         ("左移窗口", "Ctrl", "←"),
@@ -578,6 +923,10 @@ def setup_keybindings():
                     logger.info("🥷 HIGH PRIORITY: Ctrl + B pressed (Toggle Window Visibility)")
                     toggle_window_visibility()
                     return False
+                elif event.name == 'c':  # Ctrl + C to toggle code window
+                    logger.info("🥷 HIGH PRIORITY: Ctrl + C pressed (Toggle Code Window)")
+                    toggle_code_window()
+                    return False
             
             elif keyboard.is_pressed('alt') and event.name == 'f4':
                 logger.info("🥷 HIGH PRIORITY: Alt + F4 pressed (Exit GhostMentor)")
@@ -667,10 +1016,15 @@ def setup_keybindings():
                 logger.info("👁️ Fallback: Ctrl + B pressed (Toggle Window Visibility)")
                 toggle_window_visibility()
 
+            def on_ctrl_c():
+                logger.info("🎨 Fallback: Ctrl + C pressed (Toggle Code Window)")
+                toggle_code_window()
+
             keyboard.add_hotkey('ctrl+h', on_ctrl_h)
             keyboard.add_hotkey('ctrl+enter', on_ctrl_enter)
             keyboard.add_hotkey('ctrl+g', on_ctrl_g)
             keyboard.add_hotkey('ctrl+b', on_ctrl_b)
+            keyboard.add_hotkey('ctrl+c', on_ctrl_c)
             keyboard.add_hotkey('alt+f4', on_alt_f4)
             keyboard.add_hotkey('ctrl+up', on_ctrl_up)
             keyboard.add_hotkey('ctrl+down', on_ctrl_down)
@@ -714,6 +1068,10 @@ def main():
         # 设置控制台编码为UTF-8
         if os.name == 'nt':  # Windows
             os.system('chcp 65001 > nul')
+        
+        # 初始化tkinter根窗口（隐藏）
+        root = tk.Tk()
+        root.withdraw()  # 隐藏主tkinter窗口
         
         logger.info("🚀 正在启动 GhostMentor Ultra Stealth Edition...")
         
@@ -783,47 +1141,91 @@ def main():
                         window_height = window_settings['height']
                         pygame.display.set_mode((window_width, window_height), pygame.NOFRAME | pygame.SRCALPHA)
                         logger.debug(f"🎯 Dragged HUD to ({new_x}, {new_y})")
+                    elif event.type == pygame.KEYDOWN:
+                        # 处理键盘事件
+                        if code_window_visible:
+                            # 代码查看模式下的键盘控制
+                            if event.key == pygame.K_ESCAPE:
+                                close_code_window()
+                            elif event.key == pygame.K_UP:
+                                # 向上滚动
+                                code_scroll_offset = max(0, code_scroll_offset - 1)
+                            elif event.key == pygame.K_DOWN:
+                                # 向下滚动
+                                if current_highlighted_code:
+                                    visible_lines = (screen.get_height() - 60) // 16
+                                    max_scroll = max(0, len(current_highlighted_code) - visible_lines)
+                                    code_scroll_offset = min(max_scroll, code_scroll_offset + 1)
+                            elif event.key == pygame.K_PAGEUP:
+                                # 向上翻页
+                                visible_lines = (screen.get_height() - 60) // 16
+                                code_scroll_offset = max(0, code_scroll_offset - visible_lines)
+                            elif event.key == pygame.K_PAGEDOWN:
+                                # 向下翻页
+                                if current_highlighted_code:
+                                    visible_lines = (screen.get_height() - 60) // 16
+                                    max_scroll = max(0, len(current_highlighted_code) - visible_lines)
+                                    code_scroll_offset = min(max_scroll, code_scroll_offset + visible_lines)
+                            elif event.key == pygame.K_HOME:
+                                # 跳到开头
+                                code_scroll_offset = 0
+                            elif event.key == pygame.K_END:
+                                # 跳到结尾
+                                if current_highlighted_code:
+                                    visible_lines = (screen.get_height() - 60) // 16
+                                    code_scroll_offset = max(0, len(current_highlighted_code) - visible_lines)
                     elif event.type == pygame.MOUSEWHEEL:
-                        mouse_x, mouse_y = pygame.mouse.get_pos()
-                        window_width = window_settings['width']
-                        window_height = window_settings['height']
-                        if 0 <= mouse_x <= window_width and 0 <= mouse_y <= window_height:
-                            scroll_offset -= event.y  # Scroll up: +1, down: -1
-                            wrapped_lines = wrap_text(overlay_text, window_width - 20, font)
-                            max_lines = ui_settings['max_visible_lines']
-                            scroll_offset = max(0, min(scroll_offset, len(wrapped_lines) - max_lines))
-                            logger.debug(f"📜 Scrolled HUD, offset={scroll_offset}")
+                        # 优先处理代码窗口滚动
+                        if code_window_visible:
+                            handle_pygame_code_window_events(event)
+                        else:
+                            # 主窗口滚动
+                            mouse_x, mouse_y = pygame.mouse.get_pos()
+                            window_width = window_settings['width']
+                            window_height = window_settings['height']
+                            if 0 <= mouse_x <= window_width and 0 <= mouse_y <= window_height:
+                                scroll_offset -= event.y  # Scroll up: +1, down: -1
+                                wrapped_lines = wrap_text(overlay_text, window_width - 20, font)
+                                max_lines = ui_settings['max_visible_lines']
+                                scroll_offset = max(0, min(scroll_offset, len(wrapped_lines) - max_lines))
+                                logger.debug(f"📜 Scrolled HUD, offset={scroll_offset}")
 
                 # Update overlay text
                 update_overlay()
                 keep_on_top()
-
-                # Render HUD with wrapped text and scroll
-                screen.fill((0, 0, 0))  # Black background (transparency controlled by Windows API)
-                wrapped_lines = wrap_text(overlay_text, window_settings['width'] - 20, font)
-                max_lines = ui_settings['max_visible_lines']
-                visible_lines = wrapped_lines[scroll_offset:scroll_offset + max_lines]
                 
-                for i, line in enumerate(visible_lines):
-                    try:
-                        # 确保文本渲染支持中文字符
-                        text_surface = font.render(line, True, (255, 255, 255))
-                        screen.blit(text_surface, (10, 10 + i * 22))
-                    except Exception as e:
-                        # 如果渲染失败，尝试使用ASCII兼容的方式
-                        logger.debug(f"文本渲染错误: {e}")
+                # Render based on current mode
+                if code_window_visible:
+                    # 代码查看模式
+                    render_pygame_code_window()
+                else:
+                    # 正常HUD模式
+                    # Render HUD with wrapped text and scroll
+                    screen.fill((0, 0, 0))  # Black background (transparency controlled by Windows API)
+                    wrapped_lines = wrap_text(overlay_text, window_settings['width'] - 20, font)
+                    max_lines = ui_settings['max_visible_lines']
+                    visible_lines = wrapped_lines[scroll_offset:scroll_offset + max_lines]
+                    
+                    for i, line in enumerate(visible_lines):
                         try:
-                            # 尝试编码转换
-                            safe_line = line.encode('utf-8', errors='replace').decode('utf-8')
-                            text_surface = font.render(safe_line, True, (255, 255, 255))
+                            # 确保文本渲染支持中文字符
+                            text_surface = font.render(line, True, (255, 255, 255))
                             screen.blit(text_surface, (10, 10 + i * 22))
-                        except:
-                            # 最后的备用方案
-                            text_surface = font.render("文本显示错误", True, (255, 100, 100))
-                            screen.blit(text_surface, (10, 10 + i * 22))
+                        except Exception as e:
+                            # 如果渲染失败，尝试使用ASCII兼容的方式
+                            logger.debug(f"文本渲染错误: {e}")
+                            try:
+                                # 尝试编码转换
+                                safe_line = line.encode('utf-8', errors='replace').decode('utf-8')
+                                text_surface = font.render(safe_line, True, (255, 255, 255))
+                                screen.blit(text_surface, (10, 10 + i * 22))
+                            except:
+                                # 最后的备用方案
+                                text_surface = font.render("文本显示错误", True, (255, 100, 100))
+                                screen.blit(text_surface, (10, 10 + i * 22))
 
-                # Draw help menu overlay if enabled
-                draw_help_menu()
+                    # Draw help menu overlay if enabled (only in normal mode)
+                    draw_help_menu()
 
                 pygame.display.flip()
                 clock.tick(60)  # 60 FPS for smooth animations
@@ -846,6 +1248,10 @@ def main():
         
         # Clean up screenshots first
         cleanup_screenshots()
+        
+        # Clean up code window
+        if code_window_visible:
+            close_code_window()
         
         # Clean up audio
         if audio_mgr:
