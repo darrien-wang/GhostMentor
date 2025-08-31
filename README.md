@@ -1,20 +1,20 @@
-# 👻 GhostMentor: The Phantom Code
+# 👻 GhostMentor: The Phantom Code - Ultra Stealth Edition
 
 ---
 
-### *Unseen. Unheard. Unstoppable.*
+### *🥷 Unseen. Unheard. Unstoppable. Ultra Stealth.*
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/maruf009sultan/GhostMentor)
-**Your shadow ally in the digital underworld.**
+**Your shadow ally in the digital underworld - Now with OpenAI GPT-4o power.**
 
-👻 GhostMentor: Your AI-powered shadow coding assistant — an open-source experimental take inspired by f**kleetcode, crafted purely for learning, practice, and research. Not intended for cheating or rule-breaking, GhostMentor helps coders explore solutions, debug in real-time, and level up their skills safely.
+👻 GhostMentor: Your AI-powered shadow coding assistant — Enhanced with **OpenAI GPT-4o**, ultra stealth capabilities, and advanced window controls. Crafted for learning, practice, and research. Features ultra-stealth mode that completely vanishes from system detection.
 
 An open-source solution inspired by [f**kleetcode](https://www.interviewcoder.co/), designed to give you the ultimate edge in coding battles without compromise.
 
 ---
 
-GhostMentor isn’t just code—it’s a **rebellion**.
+GhostMentor isn't just code—it's a **rebellion**.
 A real-time HUD (Heads-Up Display) that **whispers solutions, cracks problems, and gives you the edge** in coding battles, interviews, and contests.
-Built with **Gemini API, Faster-Whisper, OpenCV, and Pygame**, it’s the ultimate tool for those who thrive in the shadows.
+Built with **OpenAI GPT-4o, Faster-Whisper, OpenCV, and Pygame**, it's the ultimate ultra-stealth tool for those who thrive in the shadows.
 
 ---
 
@@ -39,12 +39,14 @@ GhostMentor is your invisible partner, designed for those who **dare to dominate
 It’s not about playing fair—it’s about playing smart.
 With stealth tech and AI wizardry, it delivers:
 
-| **Feature**            | **Why It’s Epic**                                                  |
+| **Feature**            | **Why It's Epic**                                                  |
 | ---------------------- | ------------------------------------------------------------------ |
-| **Stealth Mode**       | Bypasses screen-sharing detection like a digital ghost.            |
-| **Real-Time Analysis** | Processes screens and speech faster than a proctor can blink.      |
-| **Dual Modes**         | Full mode (-f) for voice-driven power, silent mode (-s) for secret. |
-| **Elite Tech Stack**   | Gemini, Faster-Whisper, OpenCV, Pygame = magic.       |
+| **🥷 Ultra Stealth**   | Hidden from Alt+Tab, taskbar, console - complete invisibility.    |
+| **🤖 OpenAI GPT-4o**   | Latest AI model for superior screen analysis and problem solving.  |
+| **⚡ Real-Time Analysis** | Processes screens and speech faster than a proctor can blink.    |
+| **🎮 Window Controls**  | Ctrl+Arrow keys for precise HUD positioning.                      |
+| **🔇 Dual Modes**      | Full mode (-f) for voice-driven power, silent mode (-s) for secret. |
+| **🛡️ Anti-Detection**   | Bypasses screen-sharing, recording, and system monitoring.        |
 
 ---
 
@@ -247,14 +249,23 @@ pip install numpy opencv-python pillow google-generativeai pygame pyaudio faster
 
 ---
 
-## 🔑 Key Bindings: Control the Darkness
+## 🔑 High Priority Key Bindings: Control the Darkness
 
-| Key        | Action                          |
-| ---------- | ------------------------------- |
-| Ctrl+H     | Save screenshot—flex your rig.  |
-| Ctrl+Enter | Trigger Gemini analysis now.    |
-| Ctrl+G     | Clear transcript/history reset. |
-| Alt+F4     | Vanish GhostMentor instantly.   |
+### 🥷 ULTRA HIGH PRIORITY - Overrides ALL system shortcuts!
+
+| Key        | Action                          | Overrides                        |
+| ---------- | ------------------------------- | -------------------------------- |
+| Ctrl+H     | 📸 Save screenshot              | Browser history, system help    |
+| Ctrl+Enter | 🤖 Trigger OpenAI analysis     | Form submit, browser actions     |
+| Ctrl+G     | 🧹 Clear transcript/history    | Browser find, system shortcuts  |
+| **Ctrl+?** | **🎮 Show/Hide help menu**     | **System shortcuts, browser help** |
+| Alt+F4     | ❌ Vanish GhostMentor           | System close window              |
+| Ctrl+↑     | ⬆️ Move HUD window up          | Text selection, browser actions  |
+| Ctrl+↓     | ⬇️ Move HUD window down        | Text selection, browser actions  |
+| Ctrl+←     | ⬅️ Move HUD window left        | Word navigation, browser actions |
+| Ctrl+→     | ➡️ Move HUD window right       | Word navigation, browser actions |
+
+**🚨 These shortcuts will BLOCK browser and system shortcuts when GhostMentor is running!**
 
 ---
 
@@ -288,11 +299,11 @@ Got a killer idea? Open an issue or PR.
 
 Crafted with tools that scream power:
 
-* **Gemini API:** 
-* **Faster-Whisper:** 
-* **OpenCV & PIL:** 
-* **Pygame:** 
-* **Win32 API:** 
+* **OpenAI GPT-4o:** Latest vision-enabled AI for superior analysis
+* **Faster-Whisper:** Lightning-fast speech recognition 
+* **OpenCV & PIL:** Advanced image processing and screen capture
+* **Pygame:** Ultra-stealth transparent HUD interface
+* **Win32 API:** Deep Windows integration for maximum stealth 
 
 ---
 

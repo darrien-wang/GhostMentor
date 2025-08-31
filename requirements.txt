@@ -1,7 +1,9 @@
 numpy
 opencv-python
 pillow
-google-generativeai
-pygame
+openai
+customtkinter>=5.2.0
 pywin32
 keyboard
+faster-whisper
+pyaudio
