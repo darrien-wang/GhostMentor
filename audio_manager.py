@@ -82,12 +82,24 @@ class AudioManager:
         """设置转录结果回调函数"""
         self.transcript_callback = callback
     
-    def start_recording(self):
+    def start_recording(self) -> bool:
         """开始录音和转录"""
-        if not self.use_speech or self.is_recording:
-            return
+        if not self.use_speech:
+            logger.warning("🔇 语音功能已禁用")
+            return False
+            
+        if self.is_recording:
+            logger.warning("🎤 录音已在进行中")
+            return True
         
         try:
+            logger.info("🎤 正在启动录音...")
+            
+            # 检查音频设备是否可用
+            if not self.stream:
+                logger.error("❌ 音频流未初始化")
+                return False
+            
             self.is_recording = True
             self.stream.start_stream()
             
@@ -98,27 +110,37 @@ class AudioManager:
             )
             self.transcription_thread.start()
             
-            logger.info("🎤 Audio recording started")
+            logger.info("✅ 录音已成功启动")
+            return True
             
         except Exception as e:
-            logger.error(f"Failed to start recording: {e}")
+            logger.error(f"❌ 录音启动失败: {e}")
             self.is_recording = False
+            return False
     
-    def stop_recording(self):
+    def stop_recording(self) -> bool:
         """停止录音"""
-        if not self.use_speech or not self.is_recording:
-            return
+        if not self.use_speech:
+            logger.warning("🔇 语音功能已禁用")
+            return False
+            
+        if not self.is_recording:
+            logger.warning("🔇 录音未在进行中")
+            return True
         
         try:
+            logger.info("🔇 正在停止录音...")
             self.is_recording = False
             
             if self.stream and self.stream.is_active():
                 self.stream.stop_stream()
             
-            logger.info("🔇 Audio recording stopped")
+            logger.info("✅ 录音已成功停止")
+            return True
             
         except Exception as e:
-            logger.error(f"Error stopping recording: {e}")
+            logger.error(f"❌ 录音停止失败: {e}")
+            return False
     
     def _transcription_worker(self):
         """转录工作线程"""
@@ -236,15 +258,21 @@ class AudioManager:
         }
 
 # 全局音频管理器实例（在main中初始化）
-audio_manager: Optional[AudioManager] = None
+_global_audio_manager: Optional[AudioManager] = None
 
 def initialize_audio_manager(use_speech: bool = True) -> AudioManager:
     """初始化全局音频管理器"""
-    global audio_manager
-    audio_manager = AudioManager(use_speech)
-    return audio_manager
+    global _global_audio_manager
+    try:
+        _global_audio_manager = AudioManager(use_speech)
+        logger.info(f"✅ 音频管理器已初始化: {_global_audio_manager is not None}")
+        return _global_audio_manager
+    except Exception as e:
+        logger.error(f"❌ 音频管理器初始化失败: {e}")
+        raise
 
 def get_audio_manager() -> Optional[AudioManager]:
     """获取音频管理器实例"""
-    return audio_manager
+    logger.debug(f"🔍 获取音频管理器: {_global_audio_manager is not None}")
+    return _global_audio_manager
 
