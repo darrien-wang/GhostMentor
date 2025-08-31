@@ -1233,6 +1233,11 @@ async def process_openai():
     """智能多模态分析处理器"""
     global current_transcript, has_recent_screenshot, screenshot_collection
     try:
+        # 🚀 立即关闭截图预览窗口（如果打开着的话）
+        if screenshot_preview_visible:
+            close_screenshot_preview()
+            logger.info("📷 自动关闭截图预览窗口，开始分析")
+        
         # 🎯 智能分析当前上下文状态
         user_text = current_transcript.strip()
         has_voice = bool(user_text)
